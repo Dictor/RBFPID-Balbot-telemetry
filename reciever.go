@@ -91,7 +91,9 @@ func (recv *RandomTestReciever) HealthCheck() error {
 }
 
 func NewSerialRecieverService(i *do.Injector) (Reciever, error) {
-	return &SerialReciever{}, nil
+	GlobalLogger.Panic("serial reciever isn't implemented yet")
+	return nil, nil
+	//return &SerialReciever{}, nil
 }
 
 func NewRandomTestRecieverService(i *do.Injector) (Reciever, error) {

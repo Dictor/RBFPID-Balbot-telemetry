@@ -45,5 +45,23 @@ func execRoot(cmd *cobra.Command, args []string) error {
 		do.Provide[Reciever](injector, NewSerialRecieverService)
 	}
 
+	recv := do.MustInvoke[Reciever](injector)
+	var (
+		sigChan  chan<- SignalMessage
+		statChan chan<- StatusMessage
+	)
+
+	if err := recv.AssignChannel(statChan, sigChan); err != nil {
+		GlobalLogger.WithError(err).Error("failed to assign message pipe")
+		return err
+	}
+
+	if err := recv.Listen(); err != nil {
+		GlobalLogger.WithError(err).Error("failed to assign message pipe")
+		return err
+	}
+
+	ShowGUI()
+
 	return nil
 }
