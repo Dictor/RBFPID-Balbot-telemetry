@@ -6,27 +6,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type (
-	StatusMessage struct {
-		Status       string
-		StatusReason string
-		KP, KI, KD   float32
-		Error        float32
-		Output       float32
-	}
-
-	SignalMessage struct {
-		Signal  int
-		Message string
-	}
-
-	Reciever interface {
-		AssignChannel(chan<- StatusMessage, chan<- SignalMessage) error
-		Listen() error
-		do.Shutdownable
-		do.Healthcheckable
-	}
-)
+type ()
 
 var (
 	GlobalLogger = logrus.New()
@@ -60,9 +40,9 @@ func execRoot(cmd *cobra.Command, args []string) error {
 	injector := do.New()
 
 	if argRandtestRecieverEnable {
-		do.Provide[*Reciever](injector, NewRandomTestRecieverService)
+		do.Provide[Reciever](injector, NewRandomTestRecieverService)
 	} else if argSerialRecieverEnable {
-		do.Provide[*Reciever](injector, NewSerialRecieverService)
+		do.Provide[Reciever](injector, NewSerialRecieverService)
 	}
 
 	return nil
