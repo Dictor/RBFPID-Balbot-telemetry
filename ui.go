@@ -1,6 +1,7 @@
 package main
 
 import (
+	"image"
 	"time"
 
 	"gioui.org/app"
@@ -8,9 +9,11 @@ import (
 	"gioui.org/layout"
 	"gioui.org/op"
 	"gioui.org/unit"
+	"gioui.org/widget/material"
 	"github.com/samber/lo"
 
 	"gonum.org/v1/plot"
+	"gonum.org/v1/plot/font"
 	"gonum.org/v1/plot/plotter"
 	"gonum.org/v1/plot/plotutil"
 	"gonum.org/v1/plot/vg"
@@ -28,10 +31,12 @@ func loopWindow(w, h vg.Length, dpi float64, data *graphData) {
 	win := app.NewWindow(
 		app.Title("Telemetry"),
 		app.Size(
-			unit.Dp(float32(w.Dots(dpi))),
+			unit.Dp(float32(w.Dots(dpi)))*1.5,
 			unit.Dp(float32(h.Dots(dpi))),
 		),
 	)
+
+	th := material.NewTheme()
 
 	const maxDataCount int = 20
 
@@ -77,7 +82,15 @@ func loopWindow(w, h vg.Length, dpi float64, data *graphData) {
 					}
 
 					//p.Add(plotter.NewGrid())
-					cnv := vggio.New(gtx, w, h, vggio.UseDPI(int(dpi)))
+					chartWidth := float32(e.Size.X) * 0.66
+					chartHeight := float32(e.Size.Y)
+					pixelToDp := font.Inch.Points() / dpi
+
+					trans := op.Offset(image.Pt(int(unit.Dp(chartWidth)), 0)).Push(gtx.Ops)
+					material.Label(th, unit.Sp(32), "hello").Layout(gtx)
+					trans.Pop()
+
+					cnv := vggio.New(gtx, font.Points(float64(chartWidth)*pixelToDp), font.Points(float64(chartHeight)*pixelToDp), vggio.UseDPI(int(dpi)))
 					p.Draw(draw.New(cnv))
 					e.Frame(cnv.Paint())
 
@@ -136,7 +149,5 @@ func RunGUI(sig <-chan SignalMessage, stat <-chan StatusMessage) {
 	}(100)
 
 	loopWindow(w, h, dpi, &data)
-	GlobalLogger.Info("loop")
 	app.Main()
-	GlobalLogger.Info("main")
 }
