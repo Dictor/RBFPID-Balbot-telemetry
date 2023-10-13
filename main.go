@@ -47,8 +47,8 @@ func execRoot(cmd *cobra.Command, args []string) error {
 
 	recv := do.MustInvoke[Reciever](injector)
 	var (
-		sigChan  chan<- SignalMessage
-		statChan chan<- StatusMessage
+		sigChan  chan SignalMessage = make(chan SignalMessage, 10)
+		statChan chan StatusMessage = make(chan StatusMessage, 10)
 	)
 
 	if err := recv.AssignChannel(statChan, sigChan); err != nil {
@@ -61,7 +61,7 @@ func execRoot(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	ShowGUI()
+	RunGUI(sigChan, statChan)
 
 	return nil
 }

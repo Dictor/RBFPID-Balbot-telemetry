@@ -10,6 +10,7 @@ import (
 
 type (
 	StatusMessage struct {
+		Time         float32
 		Status       string
 		StatusReason string
 		KP, KI, KD   float32
@@ -18,6 +19,7 @@ type (
 	}
 
 	SignalMessage struct {
+		Time    float32
 		Signal  int
 		Message string
 	}
@@ -50,7 +52,10 @@ func (recv *RandomTestReciever) Listen() error {
 	recv.ctx, recv.ctxCancel = context.WithCancel(context.Background())
 
 	go func() {
+		timeStart := time.Now()
 		for {
+			timeCurrect := time.Now()
+			secondElasped := float32(timeCurrect.Sub(timeStart).Seconds())
 			recv.statChan <- StatusMessage{
 				Status:       "normal",
 				StatusReason: "random test reciever",
@@ -59,10 +64,12 @@ func (recv *RandomTestReciever) Listen() error {
 				KD:           rand.Float32(),
 				Error:        rand.Float32(),
 				Output:       rand.Float32(),
+				Time:         secondElasped,
 			}
 			recv.sigChan <- SignalMessage{
 				Signal:  0,
 				Message: "reciever still alive",
+				Time:    secondElasped,
 			}
 
 			select {
