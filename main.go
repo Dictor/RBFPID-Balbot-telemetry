@@ -56,6 +56,15 @@ func execRoot(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	if argSerialRecieverEnable {
+		srecv := recv.(*SerialReciever)
+		err := srecv.OpenPort(argSerialRecieverPort, argSerialRecieverBaud)
+		if err != nil {
+			GlobalLogger.WithError(err).Error("failed to open serial port")
+			return err
+		}
+	}
+
 	if err := recv.Listen(); err != nil {
 		GlobalLogger.WithError(err).Error("failed to assign message pipe")
 		return err

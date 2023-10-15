@@ -66,6 +66,9 @@ func loopWindow(w, h vg.Length, dpi float64, data *graphData) {
 
 					for i := 0; i < len(refSource); i++ {
 						src := *(refSource[i])
+						if len(src) < 1 {
+							continue
+						}
 						*(refTarget[i]) = lo.Map[float32, plotter.XY](src[max(len(src)-maxDataCount-1, 0):len(src)-1], func(item float32, index int) plotter.XY {
 							return plotter.XY{X: float64(data.T[index]), Y: float64(item)}
 						})
