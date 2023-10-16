@@ -12,7 +12,6 @@ import (
 	"gioui.org/op"
 	"gioui.org/unit"
 	"gioui.org/widget/material"
-	"github.com/samber/lo"
 
 	"gonum.org/v1/plot"
 	"gonum.org/v1/plot/font"
@@ -23,13 +22,9 @@ import (
 	"gonum.org/v1/plot/vg/vggio"
 )
 
-type (
-	graphData struct {
-		Kp, Ki, Kd, E, U, T []float32
-	}
-)
+const maxDataCount int = 80
 
-func loopWindow(w, h vg.Length, dpi float64, data *graphData, ctxCancel context.CancelFunc) {
+func loopWindow(w, h vg.Length, dpi float64, dataRef *[]StatusMessage, ctxCancel context.CancelFunc) {
 	win := app.NewWindow(
 		app.Title("Telemetry"),
 		app.Size(
@@ -40,7 +35,10 @@ func loopWindow(w, h vg.Length, dpi float64, data *graphData, ctxCancel context.
 
 	th := material.NewTheme()
 
-	const maxDataCount int = 20
+	var points [5]plotter.XYs
+	for i := 0; i < len(points); i++ {
+		points[i] = make(plotter.XYs, maxDataCount)
+	}
 
 	go func() {
 		for {
@@ -60,28 +58,24 @@ func loopWindow(w, h vg.Length, dpi float64, data *graphData, ctxCancel context.
 					//p.X.Label.TextStyle.Font.Variant = "Mono"
 					//p.Y.Label.TextStyle.Font.Variant = "Mono"
 
-					var (
-						xyKi, xyKd, xyKp, xyU, xyE plotter.XYs
-						refTarget                  []*plotter.XYs = []*plotter.XYs{&xyKi, &xyKd, &xyKp, &xyU, &xyE}
-						refSource                  []*[]float32   = []*[]float32{&data.Ki, &data.Kd, &data.Kp, &data.U, &data.E}
-					)
-
-					for i := 0; i < len(refSource); i++ {
-						src := *(refSource[i])
-						if len(src) < 1 {
-							continue
+					data := *dataRef
+					if len(data) != 0 {
+						data = data[max(len(data)-1-maxDataCount, 0) : len(data)-1]
+						for j := 0; j < min(maxDataCount, len(data)); j++ {
+							points[0][j] = plotter.XY{X: float64(data[j].Time), Y: float64(data[j].KP)}
+							points[1][j] = plotter.XY{X: float64(data[j].Time), Y: float64(data[j].KI)}
+							points[2][j] = plotter.XY{X: float64(data[j].Time), Y: float64(data[j].KD)}
+							points[3][j] = plotter.XY{X: float64(data[j].Time), Y: float64(data[j].Output)}
+							points[4][j] = plotter.XY{X: float64(data[j].Time), Y: float64(data[j].Error)}
 						}
-						*(refTarget[i]) = lo.Map[float32, plotter.XY](src[max(len(src)-maxDataCount-1, 0):len(src)-1], func(item float32, index int) plotter.XY {
-							return plotter.XY{X: float64(data.T[index]), Y: float64(item)}
-						})
 					}
 
 					if err := plotutil.AddLinePoints(p,
-						"Ki", xyKi,
-						"Kd", xyKd,
-						"Kp", xyKp,
-						"u", xyU,
-						"e", xyE); err != nil {
+						"Kp", points[0],
+						"Ki", points[1],
+						"Kd", points[2],
+						"u", points[3],
+						"e", points[4]); err != nil {
 						GlobalLogger.WithError(err).Error("failed to draw plot")
 						continue
 					}
@@ -99,15 +93,18 @@ func loopWindow(w, h vg.Length, dpi float64, data *graphData, ctxCancel context.
 						})
 					}
 					trans := op.Offset(image.Pt(int(unit.Dp(chartWidth))+20, 0)).Push(gtx.Ops)
-					if len(data.Kp) != 0 {
+
+					if len(data) > 0 {
 						layout.Flex{Axis: layout.Vertical}.Layout(gtx,
-							label(fmt.Sprintf("Kp: %f", data.Kp[len(data.Kp)-1])),
-							label(fmt.Sprintf("Ki: %f", data.Ki[len(data.Ki)-1])),
-							label(fmt.Sprintf("Kd: %f", data.Kd[len(data.Kd)-1])),
-							label(fmt.Sprintf("u: %f", data.U[len(data.U)-1])),
-							label(fmt.Sprintf("e: %f", data.E[len(data.E)-1])),
+							label(fmt.Sprintf("t: %f", data[len(data)-1].Time)),
+							label(fmt.Sprintf("Kp: %f", data[len(data)-1].KP)),
+							label(fmt.Sprintf("Ki: %f", data[len(data)-1].KI)),
+							label(fmt.Sprintf("Kd: %f", data[len(data)-1].KD)),
+							label(fmt.Sprintf("u: %f", data[len(data)-1].Output)),
+							label(fmt.Sprintf("e: %f", data[len(data)-1].Error)),
 						)
 					}
+
 					trans.Pop()
 
 					cnv := vggio.New(gtx, font.Points(float64(chartWidth)*pixelToDp), font.Points(float64(chartHeight)*pixelToDp), vggio.UseDPI(int(dpi)))
@@ -117,7 +114,7 @@ func loopWindow(w, h vg.Length, dpi float64, data *graphData, ctxCancel context.
 				case system.DestroyEvent:
 					ctxCancel()
 				}
-			case <-time.Tick(100 * time.Millisecond):
+			case <-time.Tick(50 * time.Millisecond):
 				win.Invalidate()
 			}
 		}
@@ -132,16 +129,8 @@ func startGUI(ctxCancel context.CancelFunc, sig <-chan SignalMessage, stat <-cha
 	)
 
 	var (
-		data graphData = graphData{}
+		data []StatusMessage
 	)
-
-	cleanArray := func(arr *[]float32, size int) {
-		l := len(*arr)
-		GlobalLogger.Info(l)
-		if l > size {
-			*arr = (*arr)[l-1-size : l-1]
-		}
-	}
 
 	go func(bufferSize int) {
 		for {
@@ -149,19 +138,10 @@ func startGUI(ctxCancel context.CancelFunc, sig <-chan SignalMessage, stat <-cha
 			case _ = <-sig:
 				break
 			case msg := <-stat:
-				data.E = append(data.E, msg.Error)
-				data.Kd = append(data.Kd, msg.KD)
-				data.Ki = append(data.Ki, msg.KI)
-				data.Kp = append(data.Kp, msg.KP)
-				data.U = append(data.U, msg.Output)
-				data.T = append(data.T, msg.Time)
-			case <-time.Tick(10 * time.Second):
-				cleanArray(&data.E, bufferSize)
-				cleanArray(&data.Kd, bufferSize)
-				cleanArray(&data.Ki, bufferSize)
-				cleanArray(&data.Kp, bufferSize)
-				cleanArray(&data.U, bufferSize)
-				cleanArray(&data.T, bufferSize)
+				data = append(data, msg)
+				if len(data) > 500 {
+					data = data[len(data)-21 : len(data)-1]
+				}
 			default:
 				time.Sleep(50 * time.Millisecond)
 			}
