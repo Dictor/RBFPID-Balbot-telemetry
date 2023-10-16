@@ -120,7 +120,13 @@ func (recv *SerialReciever) Listen() error {
 				GlobalLogger.WithError(err).Errorf("failed to read buffer, isPrefix=%t", isPrefix)
 				continue
 			}
+
 			tokens := strings.Split(string(rawLine), ",")
+			if len(tokens) != 6 {
+				GlobalLogger.Errorf("token is incomplete: %d tokens", len(tokens))
+				continue
+			}
+
 			values := lo.Map[string, float32](tokens, func(item string, index int) float32 {
 				f, err := strconv.ParseFloat(item, 32)
 				if err != nil {
