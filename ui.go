@@ -99,13 +99,15 @@ func loopWindow(w, h vg.Length, dpi float64, data *graphData, ctxCancel context.
 						})
 					}
 					trans := op.Offset(image.Pt(int(unit.Dp(chartWidth))+20, 0)).Push(gtx.Ops)
-					layout.Flex{Axis: layout.Vertical}.Layout(gtx,
-						label(fmt.Sprintf("Kp: %f", data.Kp[len(data.Kp)-1])),
-						label(fmt.Sprintf("Ki: %f", data.Ki[len(data.Ki)-1])),
-						label(fmt.Sprintf("Kd: %f", data.Kd[len(data.Kd)-1])),
-						label(fmt.Sprintf("u: %f", data.U[len(data.U)-1])),
-						label(fmt.Sprintf("e: %f", data.E[len(data.E)-1])),
-					)
+					if len(data.Kp) != 0 {
+						layout.Flex{Axis: layout.Vertical}.Layout(gtx,
+							label(fmt.Sprintf("Kp: %f", data.Kp[len(data.Kp)-1])),
+							label(fmt.Sprintf("Ki: %f", data.Ki[len(data.Ki)-1])),
+							label(fmt.Sprintf("Kd: %f", data.Kd[len(data.Kd)-1])),
+							label(fmt.Sprintf("u: %f", data.U[len(data.U)-1])),
+							label(fmt.Sprintf("e: %f", data.E[len(data.E)-1])),
+						)
+					}
 					trans.Pop()
 
 					cnv := vggio.New(gtx, font.Points(float64(chartWidth)*pixelToDp), font.Points(float64(chartHeight)*pixelToDp), vggio.UseDPI(int(dpi)))
@@ -161,7 +163,7 @@ func startGUI(ctxCancel context.CancelFunc, sig <-chan SignalMessage, stat <-cha
 				cleanArray(&data.U, bufferSize)
 				cleanArray(&data.T, bufferSize)
 			default:
-				time.Sleep(250 * time.Millisecond)
+				time.Sleep(50 * time.Millisecond)
 			}
 		}
 	}(100)

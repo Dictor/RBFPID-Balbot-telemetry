@@ -146,6 +146,9 @@ func (recv *SerialReciever) Listen() error {
 }
 
 func (recv *SerialReciever) Shutdown() error {
+	if err := recv.port.Close(); err != nil {
+		GlobalLogger.WithError(err).Error("failed to close serial port")
+	}
 	recv.ctxCancel()
 	return nil
 }
