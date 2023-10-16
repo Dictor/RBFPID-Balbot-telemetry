@@ -203,7 +203,7 @@ func (recv *RandomTestReciever) Listen() error {
 			default:
 			}
 
-			time.Sleep(time.Second)
+			time.Sleep(200 * time.Millisecond)
 		}
 	}()
 	return nil
