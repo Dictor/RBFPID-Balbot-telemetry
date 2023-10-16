@@ -1,6 +1,9 @@
 package main
 
 import (
+	"context"
+	"os"
+
 	"github.com/samber/do"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -70,7 +73,15 @@ func execRoot(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	RunGUI(sigChan, statChan)
+	guiCtx, guiCtxCancel := context.WithCancel(context.Background())
+	go func() {
+		<-guiCtx.Done()
+		GlobalLogger.Info("shutdown by gui destroy")
+		injector.Shutdown()
+		os.Exit(0)
+	}()
+
+	startGUI(guiCtxCancel, sigChan, statChan)
 
 	return nil
 }

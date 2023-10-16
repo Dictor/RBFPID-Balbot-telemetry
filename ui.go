@@ -27,7 +27,7 @@ type (
 	}
 )
 
-func loopWindow(w, h vg.Length, dpi float64, data *graphData) {
+func loopWindow(w, h vg.Length, dpi float64, data *graphData, ctxCancel context.CancelFunc) {
 	win := app.NewWindow(
 		app.Title("Telemetry"),
 		app.Size(
@@ -98,7 +98,8 @@ func loopWindow(w, h vg.Length, dpi float64, data *graphData) {
 					e.Frame(cnv.Paint())
 
 				case system.DestroyEvent:
-					return
+					ctxCancel()
+					GlobalLogger.Info("cancel!")
 				}
 			case <-time.Tick(100 * time.Millisecond):
 				win.Invalidate()
@@ -107,7 +108,7 @@ func loopWindow(w, h vg.Length, dpi float64, data *graphData) {
 	}()
 }
 
-func RunGUI(sig <-chan SignalMessage, stat <-chan StatusMessage) {
+func startGUI(ctxCancel context.CancelFunc, sig <-chan SignalMessage, stat <-chan StatusMessage) {
 	const (
 		w   = 20 * vg.Centimeter
 		h   = 15 * vg.Centimeter
@@ -151,6 +152,6 @@ func RunGUI(sig <-chan SignalMessage, stat <-chan StatusMessage) {
 		}
 	}(100)
 
-	loopWindow(w, h, dpi, &data)
+	loopWindow(w, h, dpi, &data, ctxCancel)
 	app.Main()
 }
